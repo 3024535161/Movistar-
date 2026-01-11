@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estimador Expedición · Apoyo Interno</title>
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#002e6d,#00a8e1);
+  color:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+.card{
+  background:rgba(0,0,0,.35);
+  padding:24px;
+  border-radius:18px;
+  max-width:440px;
+  width:100%;
+  box-shadow:0 20px 40px rgba(0,0,0,.35);
+}
+.logo{
+  text-align:center;
+  font-size:24px;
+  font-weight:bold;
+  margin-bottom:10px;
+}
+.logo span{color:#00e6ff;}
+label{
+  display:block;
+  margin-top:10px;
+  font-size:14px;
+}
+input,select,button{
+  width:100%;
+  padding:11px;
+  border-radius:10px;
+  border:none;
+  margin-top:6px;
+  font-size:14px;
+}
+input,select{
+  background:#fff;
+  color:#002e6d;
+}
+button{
+  background:#00e6ff;
+  color:#002e6d;
+  font-weight:bold;
+  margin-top:14px;
+  cursor:pointer;
+}
+.result{
+  margin-top:14px;
+  background:rgba(255,255,255,.1);
+  padding:14px;
+  border-radius:14px;
+  font-size:14px;
+  line-height:1.6;
+}
+.tag{
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:8px;
+  margin-left:6px;
+}
+.alta{background:#00ffcc;color:#003;}
+.media{background:#ffd966;color:#333;}
+.baja{background:#ff9999;color:#400;}
+.info{
+  margin-top:12px;
+  background:rgba(0,0,0,.25);
+  padding:12px;
+  border-radius:12px;
+  font-size:12.5px;
+}
+small{
+  opacity:.65;
+  font-size:11px;
+  display:block;
+  margin-top:8px;
+  text-align:center;
+}
+hr{
+  margin:14px 0;
+  opacity:.25;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="logo">Movistar <span>Apoyo Interno</span></div>
+
+  <label>Fecha de nacimiento</label>
+  <input type="date" id="birth">
+
+  <label>¿Cuándo expidió la cédula?</label>
+  <select id="tiempo">
+    <option value="justo">Apenas cumplí 18</option>
+    <option value="meses" selected>A los meses</option>
+    <option value="mucho">Mucho después</option>
+  </select>
+
+  <label>¿Fue antes o después del cumpleaños?</label>
+  <select id="direccion">
+    <option value="nr" selected>No recuerda</option>
+    <option value="despues">Después</option>
+    <option value="antes">Antes</option>
+  </select>
+
+  <label>¿Fue el mismo año que cumplió 18?</label>
+  <select id="mismoAno">
+    <option value="nr" selected>No recuerda</option>
+    <option value="si">Sí</option>
+    <option value="no">No</option>
+  </select>
+
+  <button onclick="calcular()">Calcular estimación</button>
+
+  <div class="result" id="resultado"></div>
+
+  <hr>
+
+  <label>📌 Fecha real de expedición (si la encuentras)</label>
+  <input type="date" id="real">
+
+  <button onclick="aprender()">🧠 Guardar y aprender</button>
+
+  <div class="info">
+    <ul>
+      <li>Mejora automáticamente con el uso</li>
+      <li>Aprende de patrones reales</li>
+      <li>No depende de terceros</li>
+    </ul>
+  </div>
+
+  <small>Uso interno · Estimación orientativa</small>
+</div>
+
+<script>
+let ultimoBase = null;
+let ajusteGlobal = Number(localStorage.getItem("ajusteExpedicionMeses")) || 0;
+
+function calcular(){
+  const b=document.getElementById("birth").value;
+  if(!b) return alert("Ingresa la fecha de nacimiento");
+
+  const birth=new Date(b);
+  let delay=4;
+
+  const tiempo=document.getElementById("tiempo").value;
+  const direccion=document.getElementById("direccion").value;
+  const mismoAno=document.getElementById("mismoAno").value;
+
+  if(tiempo==="justo") delay-=2;
+  if(tiempo==="mucho") delay+=6;
+  if(direccion==="despues") delay+=1;
+  if(direccion==="antes") delay-=1;
+  if(mismoAno==="si") delay-=1;
+  if(mismoAno==="no") delay+=6;
+
+  delay += ajusteGlobal;
+  delay=Math.max(-2,Math.min(delay,18));
+
+  const base=new Date(birth);
+  base.setFullYear(base.getFullYear()+18);
+  base.setMonth(base.getMonth()+delay);
+  base.setDate(10);
+
+  ultimoBase=base;
+
+  document.getElementById("resultado").innerHTML=`
+    🟢 <b>${base.toLocaleDateString()}</b>
+    <span class="tag alta">Alta</span>
+  `;
+}
+
+function aprender(){
+  if(!ultimoBase) return alert("Primero calcula una fecha");
+
+  const real=document.getElementById("real").value;
+  if(!real) return alert("Ingresa la fecha real");
+
+  const diff=Math.round((new Date(real)-ultimoBase)/(1000*60*60*24*30));
+  ajusteGlobal+=diff*0.2;
+  ajusteGlobal=Math.max(-6,Math.min(6,ajusteGlobal));
+
+  localStorage.setItem("ajusteExpedicionMeses",ajusteGlobal.toFixed(2));
+  alert("Aprendizaje guardado 🧠");
+}
+</script>
+</body>
+</html>
