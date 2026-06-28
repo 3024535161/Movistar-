@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estimador de Expedición · PRO v6.1</title>
+
+<style>
+*{box-sizing:border-box;}
+body{
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:linear-gradient(135deg,#001f4d,#00a8e1);
+  color:#ffffff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+.card{
+  background:rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  padding:26px 24px;
+  border-radius:22px;
+  max-width:460px;
+  width:100%;
+  box-shadow:0 25px 55px rgba(0,0,0,.5);
+}
+.logo{
+  text-align:center;
+  font-size:22px;
+  font-weight:700;
+  margin-bottom:18px;
+}
+.logo span{color:#00e6ff;}
+label{display:block;margin-top:14px;font-size:14px;}
+input[type='date'],select{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  margin-top:8px;
+  font-size:14px;
+  background:#fff;
+  color:#002e6d;
+}
+button{
+  width:100%;
+  padding:13px;
+  border-radius:14px;
+  border:none;
+  margin-top:14px;
+  font-size:15px;
+  font-weight:700;
+  background:linear-gradient(135deg,#00e6ff,#00ffcc);
+  color:#00324d;
+  cursor:pointer;
+}
+button.sec{background:rgba(255,255,255,.15);color:#fff;}
+.result{
+  margin-top:18px;
+  background:rgba(255,255,255,.12);
+  padding:16px;
+  border-radius:16px;
+  font-size:14px;
+  line-height:1.7;
+}
+.row{padding:4px 6px;border-radius:10px;}
+.alta{background:rgba(0,255,200,.35);}
+.media{background:rgba(255,217,102,.35);}
+.baja{background:rgba(255,159,159,.35);}
+.hit{outline:2px solid #00ffcc;}
+hr{margin:18px 0;opacity:.25;}
+small{
+  display:block;
+  margin-top:12px;
+  font-size:11px;
+  opacity:.7;
+  text-align:center;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:10;
+}
+.modalContent{
+  background:#0b2a4a;
+  width:92%;
+  max-width:440px;
+  max-height:80vh;
+  overflow:auto;
+  border-radius:18px;
+  padding:18px;
+}
+.entry{
+  background:rgba(255,255,255,.1);
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="logo">Movistar <span>Apoyo Interno · PRO v6.1</span></div>
+
+  <label>Fecha de nacimiento</label>
+  <input type="date" id="birth">
+
+  <label>¿Qué tan cerca fue la expedición?</label>
+  <select id="rango">
+    <option value="cerca">Cerca de los 18</option>
+    <option value="normal" selected>Meses después</option>
+    <option value="lejos">Mucho después</option>
+  </select>
+
+  <button onclick="calcular()">Calcular estimación</button>
+
+  <div class="result" id="resultado"></div>
+
+  <hr>
+
+  <label>📌 Fecha real de expedición</label>
+  <input type="date" id="real">
+
+  <button onclick="aprender()">🧠 Guardar aprendizaje</button>
+  <button class="sec" onclick="verHistorial()">📊 Historial</button>
+  <button class="sec" onclick="limpiar()">🧹 Limpiar estadísticas</button>
+
+  <small>Uso interno · Estimación orientativa</small>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modalContent">
+    <h3>📊 Historial</h3>
+    <div id="lista"></div>
+    <button class="sec" onclick="cerrar()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+let ultimoBase=null;
+let fechas=[];
+let ajustes=JSON.parse(localStorage.getItem("ajustesPorRango"))||{cerca:0,normal:0,lejos:0};
+let historial=JSON.parse(localStorage.getItem("historialExpedicion"))||[];
+
+function calcular(){
+  const b=document.getElementById("birth").value;
+  if(!b) return alert("Ingresa la fecha de nacimiento");
+
+  const rango=document.getElementById("rango").value;
+
+  // BASE POR RANGO
+  let baseDelay = 4;
+  if(rango==="cerca") baseDelay = 1;
+  if(rango==="normal") baseDelay = 4;
+
+  // LÓGICA EXTRA SOLO PARA "MUCHO DESPUÉS"
+  if(rango==="lejos"){
+    const edadActual = new Date().getFullYear() - new Date(b).getFullYear();
+    if(edadActual > 40){
+      baseDelay = 12; // personas mayores suelen expedir muy tarde
+    }else if(edadActual > 30){
+      baseDelay = 9;
+    }else{
+      baseDelay = 7;
+    }
+  }
+
+  let delay = baseDelay + (ajustes[rango] || 0);
+  delay=Math.max(2,Math.min(delay,24));
+
+  const base=new Date(b);
+  base.setFullYear(base.getFullYear()+18);
+  base.setMonth(base.getMonth()+delay);
+  base.setDate(10);
+  ultimoBase=base;
+
+  fechas=[
+    new Date(base),
+    new Date(base),
+    new Date(base)
+  ];
+  fechas[1].setMonth(fechas[1].getMonth()+1);
+  fechas[2].setMonth(fechas[2].getMonth()-1);
+
+  render();
+}
+
+function render(matchIndex=null){
+  const clases=["alta","media","baja"];
+  let html="";
+  fechas.forEach((d,i)=>{
+    const hit= i===matchIndex ? " hit" : "";
+    html+=`<div class="row ${clases[i]}${hit}">
+      ${d.toLocaleDateString()}
+    </div>`;
+  });
+  document.getElementById("resultado").innerHTML=html;
+}
+
+function aprender(){
+  if(!ultimoBase) return alert("Primero calcula una fecha");
+  const realVal=document.getElementById("real").value;
+  if(!realVal) return alert("Ingresa la fecha real");
+
+  const rango=document.getElementById("rango").value;
+  const real=new Date(realVal);
+
+  let match=null;
+  fechas.forEach((d,i)=>{
+    if(d.getMonth()===real.getMonth() && d.getFullYear()===real.getFullYear()){
+      match=i;
+    }
+  });
+
+  render(match);
+
+  const diff=Math.round((real-ultimoBase)/(1000*60*60*24*30));
+  ajustes[rango]=(ajustes[rango]||0)+diff*0.25;
+  ajustes[rango]=Math.max(-10,Math.min(10,ajustes[rango]));
+  localStorage.setItem("ajustesPorRango",JSON.stringify(ajustes));
+
+  historial.push({
+    rango,
+    estimada:ultimoBase.toLocaleDateString(),
+    real:real.toLocaleDateString()
+  });
+  localStorage.setItem("historialExpedicion",JSON.stringify(historial));
+
+  alert(match!==null
+    ? "Coincidencia detectada ✔️"
+    : "Aprendizaje guardado");
+
+  document.getElementById("real").value="";
+}
+
+function verHistorial(){
+  const lista=document.getElementById("lista");
+  lista.innerHTML="";
+  if(historial.length===0){
+    lista.innerHTML="<p>No hay registros.</p>";
+  }else{
+    historial.slice().reverse().forEach(h=>{
+      lista.innerHTML+=`
+        <div class="entry">
+          <b>Rango:</b> ${h.rango}<br>
+          <b>Estimada:</b> ${h.estimada}<br>
+          <b>Real:</b> ${h.real}
+        </div>`;
+    });
+  }
+  document.getElementById("modal").style.display="flex";
+}
+
+function cerrar(){
+  document.getElementById("modal").style.display="none";
+}
+
+function limpiar(){
+  if(!confirm("¿Borrar todo el aprendizaje y estadísticas?")) return;
+  localStorage.removeItem("ajustesPorRango");
+  localStorage.removeItem("historialExpedicion");
+  ajustes={cerca:0,normal:0,lejos:0};
+  historial=[];
+  alert("Estadísticas limpiadas");
+}
+</script>
+</body>
+</html>
