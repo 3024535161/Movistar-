@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRM Portabilidad Pro</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
+header{background:#00a9e0;padding:18px;text-align:center;font-size:26px;font-weight:bold}
+.container{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:#111827;padding:20px}
+aside h2{font-size:18px}
+aside button{width:100%;margin:8px 0;padding:12px;border:none;border-radius:8px;background:#1f2937;color:#fff;cursor:pointer}
+main{padding:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px}
+.card{background:#1e293b;border-radius:12px;padding:15px;text-align:center}
+.section{background:#1e293b;margin-top:20px;padding:20px;border-radius:12px}
+label{display:block;margin-top:10px;font-weight:bold}
+input{width:100%;padding:10px;border-radius:8px;border:none;margin-top:4px}
+.save{margin-top:18px;background:#00a9e0;color:#fff;font-weight:bold;padding:12px;border:none;border-radius:8px;width:100%;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{border:1px solid #334155;padding:10px;text-align:center}
+th{background:#0b1220}
+.actions button{margin:2px;padding:6px 10px}
+</style>
+</head>
+<body>
+<header>CRM MOVISTAR PORTABILIDAD</header>
+<div class="container">
+<aside>
+<h2>Menú</h2>
+<button>🏠 Dashboard</button>
+<button>➕ Nuevo cliente</button>
+<button>👥 Clientes</button>
+<button>📊 Estadísticas</button>
+<button>⚙️ Configuración</button>
+</aside>
+<main>
+<div class="cards">
+<div class="card"><h3>Clientes</h3><h2>0</h2></div>
+<div class="card"><h3>Pendientes</h3><h2>0</h2></div>
+<div class="card"><h3>Activados</h3><h2>0</h2></div>
+<div class="card"><h3>Consumo</h3><h2>0</h2></div>
+</div>
+
+<div class="section">
+<h2>Registrar cliente</h2>
+<label>Nombre</label><input>
+<label>Cédula</label><input>
+<label>Fecha de expedición</label><input type="date">
+<label>Número a portar</label><input>
+<label>NIP</label><input>
+<label>Ciudad</label><input>
+<label>Departamento</label><input>
+<label>Fecha estimada de entrega</label><input type="date">
+<button class="save">Guardar cliente</button>
+</div>
+
+<div class="section">
+<h2>Clientes registrados</h2>
+<table>
+<thead>
+<tr>
+<th>Nombre</th><th>Cédula</th><th>EXP</th><th>Número</th><th>Entrega</th><th>SIM</th><th>Activación</th><th>Consumo</th><th>Chichón</th><th>Acciones</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="10">Aquí aparecerán los clientes registrados.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</main>
+</div>
+</body>
+</html>
