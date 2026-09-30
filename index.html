@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Simulador de Preguntas</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--blue:#2563eb;--green:#16a34a;--red:#dc2626}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px Arial,system-ui,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:14px 16px;position:sticky;top:0;z-index:5}
+.header{max-width:920px;margin:auto;display:flex;align-items:center;justify-content:space-between}.title{font-size:19px;font-weight:700}
+main{max-width:920px;margin:18px auto;padding:0 14px}.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:17px;margin:0 0 12px}h3{font-size:16px;margin:0 0 10px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{border:0;border-radius:8px;padding:10px 14px;background:var(--blue);color:white;font-weight:700;cursor:pointer}
+button.gray{background:#eef0f3;color:#222}button.green{background:var(--green)}button.red{background:var(--red)}
+textarea{width:100%;min-height:100px;border:1px solid #cfd4dc;border-radius:8px;padding:11px;font:inherit;resize:vertical}
+.uploads{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:650px){.uploads{grid-template-columns:1fr}}
+.upload{border:2px dashed #cbd5e1;border-radius:10px;padding:20px;text-align:center;cursor:pointer;background:#fafafa}.upload b{display:block;margin-bottom:5px}
+#preview{margin-top:12px;text-align:center}.preview{max-width:100%;max-height:360px;border-radius:8px}
+.notice{font-size:13px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:9px;padding:11px;margin-bottom:14px}
+.qcard{border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0;background:#fff}
+.qnumber{font-size:13px;color:var(--muted);margin-bottom:7px}.question{font-size:17px;font-weight:600;line-height:1.35;margin-bottom:12px}
+.option{display:flex;gap:10px;align-items:flex-start;padding:11px 10px;border:1px solid #e5e7eb;border-radius:8px;margin:7px 0;cursor:pointer;background:#fff}
+.option:hover{background:#f8fafc}.option input{margin-top:3px;accent-color:var(--blue)}
+.feedback{margin-top:10px;padding:10px;border-radius:8px;font-weight:600}.correct{background:#ecfdf5;color:#166534}.wrong{background:#fef2f2;color:#991b1b}
+.small{font-size:13px;color:var(--muted)}.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{border:1px solid var(--line);padding:10px 13px;border-radius:9px;background:#fafafa}
+.empty{color:var(--muted);padding:12px 0}.hidden{display:none}
+</style>
+</head>
+<body>
+<header><div class="header"><div class="title">🧠 Simulador de Preguntas</div><button class="gray" onclick="exportar()">Exportar</button></div></header>
+<main>
+<div class="notice">
+<strong>Modo entrenamiento:</strong> la aplicación sirve para practicar y validar un banco de preguntas. Las respuestas guardadas solo se consideran aprendidas después de una confirmación correcta.
+</div>
+
+<section class="card">
+<h2>1. Cargar una captura o tomar una foto</h2>
+<div class="uploads">
+<label class="upload"><b>🖼️ Cargar pantallazo</b><span class="small">Selecciona una imagen</span>
+<input id="gallery" type="file" accept="image/*" class="hidden"></label>
+<label class="upload"><b>📷 Tomar foto</b><span class="small">Usar cámara del celular</span>
+<input id="camera" type="file" accept="image/*" capture="environment" class="hidden"></label>
+</div>
+<div id="preview"></div>
+<div class="actions"><button onclick="analizarImagen()">🔎 Leer imagen</button><button class="gray" onclick="limpiarImagen()">Quitar imagen</button></div>
+<p id="ocrStatus" class="small"></p>
+</section>
+
+<section class="card">
+<h2>2. Texto detectado</h2>
+<textarea id="ocrText" placeholder="Aquí aparecerá el texto de la imagen. También puedes pegarlo directamente."></textarea>
+<div class="actions"><button onclick="crearSimulacion()">Mostrar preguntas</button><button class="gray" onclick="document.getElementById('ocrText').value=''">Limpiar</button></div>
+</section>
+
+<section class="card">
+<h2>3. Practicar</h2>
+<div id="questions"><div class="empty">Carga una imagen o pega el texto para comenzar.</div></div>
+</section>
+
+<section class="card">
+<h2>Banco aprendido</h2>
+<div class="stats">
+<div class="stat">Preguntas <b id="total">0</b></div>
+<div class="stat">Confirmadas <b id="confirmed">0</b></div>
+<div class="stat">Descartadas <b id="discarded">0</b></div>
+</div>
+<div id="bank"></div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const KEY="simulador_preguntas_v4";
+let bank=JSON.parse(localStorage.getItem(KEY)||"[]");
+let currentImage=null;
+
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9ñ\\s]/gi," ").replace(/\\s+/g," ").trim();
+function esc(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function save(){localStorage.setItem(KEY,JSON.stringify(bank));renderBank()}
+function similarity(a,b){a=norm(a);b=norm(b);if(a===b)return 1;let A=new Set(a.split(" ")),B=new Set(b.split(" ")),i=0;A.forEach(x=>B.has(x)&&i++);return i/Math.max(A.size,B.size)}
+
+function showImage(file){
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=e=>{currentImage=e.target.result;document.getElementById("preview").innerHTML='<img class="preview" src="'+currentImage+'">';};
+ reader.readAsDataURL(file);
+}
+document.getElementById("gallery").onchange=e=>showImage(e.target.files[0]);
+document.getElementById("camera").onchange=e=>showImage(e.target.files[0]);
+
+async function analizarImagen(){
+ if(!currentImage){alert("Primero carga una imagen o toma una foto.");return}
+ const status=document.getElementById("ocrStatus");
+ status.textContent="Leyendo imagen…";
+ try{
+   const result=await Tesseract.recognize(currentImage,"spa",{logger:m=>{
+     if(m.status==="recognizing text")status.textContent="Leyendo imagen… "+Math.round((m.progress||0)*100)+"%";
+   }});
+   document.getElementById("ocrText").value=result.data.text;
+   status.textContent="Texto detectado. Revísalo y pulsa “Mostrar preguntas”.";
+ }catch(e){status.textContent="No se pudo leer la imagen. Puedes pegar el texto manualmente."}
+}
+function limpiarImagen(){currentImage=null;document.getElementById("preview").innerHTML="";document.getElementById("ocrStatus").textContent=""}
+
+function parseQuestions(text){
+ const lines=text.replace(/\\r/g,"").split("\\n").map(x=>x.trim()).filter(Boolean);
+ const out=[];let cur=null;
+ for(const line of lines){
+   const qmatch=line.match(/^(\\d+)\\s*[\\.\\)\\-:]\\s*(.+)/);
+   if(qmatch){
+     if(cur)out.push(cur);
+     cur={number:qmatch[1],question:qmatch[2],options:[]};
+     continue;
+   }
+   if(cur && /^[A-D]\\s*[\\.\\)\\-:]/i.test(line)){
+     cur.options.push(line.replace(/^[A-D]\\s*[\\.\\)\\-:]\\s*/i,"").trim());continue;
+   }
+   if(cur && (line.endsWith("?")||line.length>35) && cur.options.length===0){
+     cur.question+=" "+line;
+   }else if(cur && cur.question.endsWith("?")===false && cur.options.length===0){
+     cur.question+=" "+line;
+   }else if(cur && cur.options.length>0 && line.length<100){
+     cur.options.push(line.replace(/^[-•]\\s*/,""));
+   }
+ }
+ if(cur)out.push(cur);
+ if(!out.length){
+   const parts=text.split(/(?<=\\?)/).map(x=>x.trim()).filter(x=>x.length>8);
+   parts.forEach((x,i)=>out.push({number:String(i+1),question:x,options:[]}));
+ }
+ return out;
+}
+
+function crearSimulacion(){
+ const text=document.getElementById("ocrText").value.trim();
+ if(!text){alert("Carga una imagen o pega el texto primero.");return}
+ const qs=parseQuestions(text);
+ const box=document.getElementById("questions");
+ box.innerHTML=qs.map((q,i)=>{
+   const match=bank.map(x=>({x,s:similarity(q.question,x.question)})).sort((a,b)=>b.s-a.s)[0];
+   const known=match&&match.s>=0.7?match.x:null;
+   return `<div class="qcard" data-i="${i}">
+    <div class="qnumber">Pregunta ${esc(q.number)}</div>
+    <div class="question">${esc(q.question)}</div>
+    ${q.options.length?'<div>'+q.options.map((o,j)=>`<label class="option"><input type="radio" name="q${i}" value="${esc(o)}"> <span>${esc(o)}</span></label>`).join("")+'</div>':'<textarea id="ans'+i+'" placeholder="Escribe tu respuesta para practicar"></textarea>'}
+    ${known?`<div class="small">Existe un registro de entrenamiento para esta pregunta (${Math.round(match.s*100)}%).</div>`:"<div class=\"small\">Pregunta nueva para el banco de entrenamiento.</div>"}
+    <div class="actions"><button class="green" onclick="validar(${i},${JSON.stringify(q)},${known?JSON.stringify(known):'null'})">✓ Validar</button></div>
+    <div id="fb${i}"></div>
+   </div>`;
+ }).join("");
+ window._questions=qs;
+}
+
+function getSelected(i){
+ const r=document.querySelector('input[name="q'+i+'"]:checked');
+ return r?r.value:(document.getElementById("ans"+i)?.value||"").trim();
+}
+function validar(i,q,known){
+ const answer=getSelected(i);const fb=document.getElementById("fb"+i);
+ if(!answer){fb.innerHTML='<div class="feedback wrong">Selecciona o escribe una respuesta.</div>';return}
+ if(!known){
+   fb.innerHTML='<div class="feedback">Pregunta nueva. Para entrenar el banco, confirma manualmente si esta respuesta es correcta.</div><div class="actions"><button class="green" onclick="guardarNueva('+i+')">Guardar como correcta</button><button class="red" onclick="descartarNueva('+i+')">Descartar</button></div>';
+   return;
+ }
+ const ok=norm(answer)===norm(known.answer);
+ if(ok){
+   known.confirmed=(known.confirmed||0)+1;save();
+   fb.innerHTML='<div class="feedback correct">✓ Correcta. El registro queda guardado como confirmado.</div>';
+ }else{
+   known.discarded=(known.discarded||0)+1;save();
+   fb.innerHTML='<div class="feedback wrong">✗ Incorrecta. Este intento no modifica la respuesta aprendida.</div>';
+ }
+}
+function guardarNueva(i){
+ const q=window._questions[i];const a=getSelected(i);if(!a)return;
+ bank.push({id:Date.now().toString()+i,question:q.question,options:q.options,answer:a,confirmed:1,discarded:0});
+ save();document.getElementById("fb"+i).innerHTML='<div class="feedback correct">✓ Guardada como correcta.</div>';
+}
+function descartarNueva(i){document.getElementById("fb"+i).innerHTML='<div class="feedback wrong">Descartada. No se guardó.</div>'}
+function exportar(){
+ const blob=new Blob([JSON.stringify(bank,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="banco-entrenamiento.json";a.click();URL.revokeObjectURL(url);
+}
+function renderBank(){
+ document.getElementById("total").textContent=bank.length;
+ document.getElementById("confirmed").textContent=bank.reduce((n,x)=>n+(x.confirmed||0),0);
+ document.getElementById("discarded").textContent=bank.reduce((n,x)=>n+(x.discarded||0),0);
+ document.getElementById("bank").innerHTML=bank.length?bank.slice().reverse().map(x=>`<div class="qcard"><b>${esc(x.question)}</b><div>Respuesta de entrenamiento: <strong>${esc(x.answer)}</strong></div><span class="small">Confirmadas: ${x.confirmed||0} · Descartadas: ${x.discarded||0}</span></div>`).join(""):'<div class="empty">Todavía no hay preguntas confirmadas.</div>';
+}
+renderBank();
+</script>
+</body>
+</html>
