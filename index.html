@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banco Inteligente</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--line:#e1e5ea;--text:#1f2937;--muted:#6b7280;--blue:#2563eb;--green:#15803d;--red:#dc2626}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:15px 18px;position:sticky;top:0;z-index:5}
+.head{max-width:980px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:20px;font-weight:750}
+main{max-width:980px;margin:20px auto;padding:0 14px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:15px}
+h2{font-size:17px;margin:0 0 12px}label{font-weight:650;font-size:13px;display:block;margin:11px 0 5px}
+textarea,input{width:100%;border:1px solid #cfd5dc;border-radius:8px;padding:11px;font:inherit;background:#fff}textarea{min-height:100px;resize:vertical}
+button{border:0;border-radius:8px;padding:10px 14px;font-weight:650;cursor:pointer;background:var(--blue);color:white}
+button.gray{background:#eef0f3;color:#30343b}button.green{background:var(--green)}button.red{background:var(--red)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.muted{color:var(--muted);font-size:13px}
+.drop{border:2px dashed #cbd1d8;border-radius:10px;padding:22px;text-align:center;color:var(--muted);cursor:pointer}.preview{max-width:100%;max-height:300px;margin-top:12px;border-radius:7px}
+.answer{margin-top:14px;padding:15px;border:1px solid var(--line);border-radius:10px;background:#fafbfc}.answerText{font-size:21px;font-weight:750;margin:7px 0}
+.conf{display:inline-block;background:#eef2ff;color:#3730a3;padding:4px 8px;border-radius:20px;font-size:12px}.warn{background:#fff7ed;color:#9a3412}.ok{background:#ecfdf5;color:#166534}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:700px){.row{grid-template-columns:1fr}}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 14px}.stat{background:#f8fafc;border:1px solid var(--line);padding:10px 13px;border-radius:9px}.stat b{font-size:18px}
+.item{border-top:1px solid #eee;padding:12px 0}.item:first-child{border-top:0}.item b{display:block}.tag{font-size:12px;color:var(--muted)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 14px;border-radius:8px;display:none;z-index:10}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="brand">🧠 Banco Inteligente</div><button class="gray" onclick="exportar()">Exportar banco</button></div></header>
+<main>
+
+<section class="card">
+<h2>Buscar</h2>
+<textarea id="search" placeholder="Pega aquí una pregunta o un bloque de texto..."></textarea>
+<div class="actions"><button onclick="buscar()">🔎 Buscar</button><button class="gray" onclick="document.getElementById('search').value='';document.getElementById('result').innerHTML=''">Limpiar</button></div>
+<div id="result"></div>
+</section>
+
+<section class="card">
+<h2>Agregar una pregunta</h2>
+<label>Pregunta</label><textarea id="q" placeholder="Pregunta de entrenamiento"></textarea>
+<label>Respuesta</label><input id="a" placeholder="Respuesta registrada">
+<label>Opciones</label><textarea id="o" placeholder="Una opción por línea"></textarea>
+<div class="actions"><button onclick="guardar()">Guardar</button></div>
+</section>
+
+<section class="card">
+<h2>Agregar imagen</h2>
+<div class="drop" onclick="document.getElementById('file').click()">📷 Seleccionar imagen
+<input id="file" type="file" accept="image/*" hidden><div id="pic"></div></div>
+<p class="muted">La imagen se puede usar como referencia. El OCR requiere un servicio de reconocimiento de texto para extraer automáticamente su contenido.</p>
+</section>
+
+<section class="card">
+<h2>Tu banco</h2>
+<div class="stats"><div class="stat">Preguntas<br><b id="n">0</b></div><div class="stat">Confirmadas<br><b id="c">0</b></div><div class="stat">Correcciones<br><b id="f">0</b></div></div>
+<div id="list"></div>
+</section>
+</main><div id="toast"></div>
+
+<script>
+const KEY="banco_inteligente_v3";let db=JSON.parse(localStorage.getItem(KEY)||"[]");
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9ñ\\s]/gi," ").replace(/\\s+/g," ").trim();
+function score(a,b){a=norm(a);b=norm(b);if(!a||!b)return 0;if(a===b)return 1;let A=new Set(a.split(" ")),B=new Set(b.split(" ")),i=0;A.forEach(x=>B.has(x)&&(i++));return i/Math.max(A.size,B.size)}
+function esc(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function persist(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+function toast(t){let x=document.getElementById("toast");x.textContent=t;x.style.display="block";setTimeout(()=>x.style.display="none",1800)}
+function guardar(){let q=document.getElementById("q").value.trim(),a=document.getElementById("a").value.trim(),o=document.getElementById("o").value.split("\\n").map(x=>x.trim()).filter(Boolean);if(!q||!a)return alert("Completa pregunta y respuesta.");let x=db.find(y=>norm(y.q)===norm(q));if(x){x.a=a;x.o=o;x.f=(x.f||0)+1}else db.push({id:Date.now().toString(),q,a,o,h:0,f:0,u:0,v:0,variants:[]});persist();["q","a","o"].forEach(id=>document.getElementById(id).value="");toast("Guardado")}
+function buscar(){let input=document.getElementById("search").value.trim(),box=document.getElementById("result");if(!input){box.innerHTML="";return}if(!db.length){box.innerHTML='<div class="answer">El banco está vacío.</div>';return}
+let ranked=db.map(x=>({x,s:score(input,x.q)})).sort((a,b)=>b.s-a.s);let r=ranked[0];
+if(r.s<.35){box.innerHTML='<div class="answer"><span class="conf warn">Sin coincidencia segura</span><p>No encontré una pregunta suficientemente parecida.</p></div>';return}
+r.x.u=(r.x.u||0)+1; if(r.s<.7)r.x.v=(r.x.v||0)+1;localStorage.setItem(KEY,JSON.stringify(db));
+let cls=r.s>=.8?"ok":r.s>=.6?"":"warn";
+box.innerHTML=`<div class="answer"><span class="conf ${cls}">Coincidencia ${Math.round(r.s*100)}%</span><p><b>Pregunta encontrada</b></p><div>${esc(r.x.q)}</div><p><b>Respuesta registrada</b></p><div class="answerText">${esc(r.x.a)}</div><div class="actions"><button class="green" onclick="confirmar('${r.x.id}')">✓ Confirmar correcta</button><button class="red" onclick="corregir('${r.x.id}')">Corregir</button></div></div>`}
+function confirmar(id){let x=db.find(y=>y.id===id);if(x)x.h=(x.h||0)+1;persist();buscar();toast("Confirmación guardada")}
+function corregir(id){let x=db.find(y=>y.id===id);if(!x)return;let a=prompt("Nueva respuesta:",x.a);if(a&&a.trim()){x.a=a.trim();x.f=(x.f||0)+1;persist();buscar();toast("Respuesta actualizada")}}
+function render(){document.getElementById("n").textContent=db.length;document.getElementById("c").textContent=db.reduce((n,x)=>n+(x.h||0),0);document.getElementById("f").textContent=db.reduce((n,x)=>n+(x.f||0),0);document.getElementById("list").innerHTML=db.length?db.slice().reverse().map(x=>`<div class="item"><b>${esc(x.q)}</b><div>Respuesta: <strong>${esc(x.a)}</strong></div><span class="tag">Usos ${x.u||0} · Confirmadas ${x.h||0} · Correcciones ${x.f||0}</span></div>`).join(""):'<p class="muted">Todavía no hay preguntas.</p>'}
+function exportar(){let blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="banco-preguntas.json";a.click();URL.revokeObjectURL(url)}
+document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=ev=>document.getElementById("pic").innerHTML='<img class="preview" src="'+ev.target.result+'">';r.readAsDataURL(f)}
+render();
+</script>
+</body></html>
