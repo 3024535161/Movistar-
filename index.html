@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banco de preguntas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef1f4;--card:#fff;--tx:#16212b;--mut:#5d6b78;--ln:#d5dce3;--ac:#0f5c6e;--acs:#dcedf1;--ok:#1b7a48;--oks:#dff2e7;--bad:#b3261e;--bads:#fbe4e2;--warn:#8a5a00;--warns:#fcefd0;box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1418;--card:#182028;--tx:#e7ecf0;--mut:#9aa7b3;--ln:#2c3843;--ac:#5cb8cc;--acs:#173540;--ok:#5cc98a;--oks:#143424;--bad:#f2837c;--bads:#3b1b19;--warn:#e6b750;--warns:#3a2e10}}
+:root[data-theme="dark"]{--bg:#0f1418;--card:#182028;--tx:#e7ecf0;--mut:#9aa7b3;--ln:#2c3843;--ac:#5cb8cc;--acs:#173540;--ok:#5cc98a;--oks:#143424;--bad:#f2837c;--bads:#3b1b19;--warn:#e6b750;--warns:#3a2e10}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--ln);padding-top:env(safe-area-inset-top,0px);margin-top:calc(-1 * env(safe-area-inset-top,0px))}
+.top>div{max-width:760px;margin:0 auto;padding:10px 14px 0}
+.brand{font-weight:600;font-size:18px}
+.tabs{display:flex;gap:4px;margin-top:6px}
+.tabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:10px 4px;color:var(--mut);font:inherit;font-weight:500;cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--ac);border-bottom-color:var(--ac)}
+.pill{background:var(--acs);color:var(--ac);border-radius:99px;padding:1px 8px;font-size:13px;margin-left:4px}
+main{max-width:760px;margin:0 auto;padding:14px}
+.panel{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:14px;margin-bottom:14px}
+.lbl{display:block;font-weight:600;margin-bottom:6px}
+textarea,input[type=search],select{width:100%;padding:11px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:140px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{font:inherit;font-weight:500;padding:10px 16px;border:1px solid var(--ln);border-radius:8px;background:var(--card);color:var(--tx);cursor:pointer;min-height:44px}
+.btn.p{background:var(--ac);border-color:var(--ac);color:var(--card)}
+.btn.g{border-color:transparent;color:var(--mut)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:14px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.sum{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.prog{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--ln);margin-bottom:10px}
+.prog i{display:block;height:100%}
+.st{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--mut)}
+.st b{color:var(--tx);font-size:18px;font-weight:600;display:block;line-height:1.2}
+.tg{margin-top:10px;font-size:14px;color:var(--mut);display:flex;gap:8px;align-items:center}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:14px;margin-bottom:12px}
+.card.ok{border-color:var(--ok)}.card.bad{border-color:var(--bad)}.card.conf,.card.saved{border-color:var(--ac)}
+.ch{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.num{font-weight:600;color:var(--mut);font-size:14px}
+.chip{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--acs);color:var(--ac)}
+.chip.ok{background:var(--oks);color:var(--ok)}.chip.bad{background:var(--bads);color:var(--bad)}.chip.w{background:var(--warns);color:var(--warn)}
+.q{font-weight:500;font-size:17px;margin-bottom:10px}
+label.o{display:flex;gap:12px;align-items:center;padding:11px 12px;border:1px solid var(--ln);border-radius:8px;margin-top:8px;cursor:pointer;min-height:48px}
+label.o.sel{border-color:var(--ac);background:var(--acs)}
+label.o.key{border-color:var(--ok);background:var(--oks)}
+label.o input{position:absolute;opacity:0;pointer-events:none}
+label.o:has(input:focus-visible){outline:2px solid var(--ac);outline-offset:2px}
+.lt{flex:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--mut);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--mut)}
+label.o.sel .lt{background:var(--ac);border-color:var(--ac);color:var(--card)}
+.hint{font-size:14px;color:var(--mut);margin-top:10px}
+.hint.w{color:var(--warn)}.hint.ok{color:var(--ok)}.hint.bad{color:var(--bad)}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--ln);padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 10px)}
+.bar>div{max-width:760px;margin:0 auto;display:flex;gap:8px}
+.bar .btn{flex:1}
+.bk{background:var(--card);border:1px solid var(--ln);border-radius:10px;margin-bottom:10px}
+.bk summary{padding:12px 14px;cursor:pointer;list-style:none;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.bk summary::-webkit-details-marker{display:none}
+.bk .bd{padding:0 14px 14px;border-top:1px solid var(--ln);font-size:14px}
+.bk ul{margin:8px 0;padding-left:20px}
+.bk li.a{color:var(--ok);font-weight:600}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);z-index:9;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:92%;text-align:center}
+.empty{text-align:center;color:var(--mut);padding:28px 10px}
+</style>
+</head>
+<body>
+<header class="top"><div>
+  <div class="brand">Banco de preguntas</div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-t="pr" aria-selected="true">Practicar</button>
+    <button role="tab" data-t="bk" aria-selected="false">Banco <span class="pill" id="bn">0</span></button>
+  </nav>
+</div></header>
+<main>
+<section id="pr">
+  <div class="panel" id="inPanel">
+    <label class="lbl" for="in">Preguntas</label>
+    <textarea id="in" placeholder="Pega aquí todas las preguntas..."></textarea>
+    <input type="file" id="ph" multiple hidden>
+    <div class="row">
+      <button class="btn p" data-a="show">Mostrar preguntas</button>
+      <button class="btn" data-a="photo">Cargar foto</button>
+      <button class="btn g" data-a="demo">Demo</button>
+      <button class="btn g" data-a="clear">Limpiar</button>
+    </div>
+  </div>
+  <div id="sum"></div>
+  <div id="list"></div>
+</section>
+<section id="bk" hidden>
+  <div class="panel">
+    <input type="search" id="qs" placeholder="Buscar en el banco..." aria-label="Buscar en el banco">
+    <div class="row">
+      <button class="btn sm" data-a="copy">Copiar banco</button>
+      <button class="btn sm" data-a="json">Descargar JSON</button>
+      <button class="btn sm" data-a="import">Importar banco</button>
+    </div>
+    <textarea id="io" style="min-height:90px;margin-top:10px" placeholder="Aquí aparece el banco exportado. Para importar, pega texto o JSON y pulsa «Importar banco»." aria-label="Exportar o importar"></textarea>
+  </div>
+  <div id="bank"></div>
+</section>
+</main>
+<div class="bar" id="bar" hidden><div id="barIn"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+// ---- Almacenamiento: para migrar a Supabase/Firebase solo cambia este objeto ----
+const Store={
+  key:'bq_v1',mem:[],
+  get(){try{const v=JSON.parse(localStorage.getItem(this.key));return Array.isArray(v)?v:this.mem}catch(e){return this.mem}},
+  set(b){this.mem=b;try{localStorage.setItem(this.key,JSON.stringify(b))}catch(e){}}
+};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let bank=Store.get(),S=[],showAns=true,tmr;
+function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(tmr);tmr=setTimeout(()=>e.hidden=true,3500)}
+
+// ---- Normalización interna (solo para comparar; nunca se muestra) ----
+const STOP=new Set('de la el los las un una usted con en que cual cuales siguientes siguiente tiene tienen algun alguna tipo ha su y o a del al se por para es son lo le'.split(' '));
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const toks=s=>new Set(norm(s).split(' ').filter(w=>w&&!STOP.has(w)));
+function sim(a,b){
+  if(norm(a)===norm(b))return 100;
+  const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;
+  let n=0;A.forEach(w=>{if(B.has(w))n++});
+  return Math.round(200*n/(A.size+B.size));
+}
+function best(q){
+  let r=null;
+  for(const it of bank)for(const t of [it.q,...it.variants]){const s=sim(q,t);if(!r||s>r.sim)r={item:it,sim:s}}
+  return r&&r.sim>=50?r:null;
+}
+
+// ---- Detección de estructura ----
+function parse(text){
+  const out=[];let cur=null;
+  for(const l of text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)){
+    const num=l.match(/^(\d+)\s*[.)\-:]\s*(.+)$/),endsQ=/\?\s*$/.test(l);
+    if(cur&&/^RESPUESTA\s*:/i.test(l)){cur.ans=l.replace(/^RESPUESTA\s*:\s*/i,'');continue}
+    if(cur&&/^VARIANTE\s*:/i.test(l)){cur.variants.push(l.replace(/^VARIANTE\s*:\s*/i,''));continue}
+    if(num){cur={q:num[2],opts:[],variants:[],ans:null};out.push(cur)}
+    else if(endsQ){
+      if(cur&&!cur.opts.length&&!/\?/.test(cur.q))cur.q+=' '+l;
+      else{cur={q:l,opts:[],variants:[],ans:null};out.push(cur)}
+    }else if(cur)cur.opts.push(l.replace(/^([A-Za-z]|\d+)[.)]\s+/,'').replace(/^[-•*·]\s+/,''));
+    else{cur={q:l,opts:[],variants:[],ans:null};out.push(cur)}
+  }
+  return out;
+}
+
+// ---- Banco ----
+function addToBank(p){
+  const m=best(p.q);
+  if(m&&m.sim>=75){
+    const it=m.item;
+    for(const v of [p.q,...(p.variants||[])])
+      if(norm(v)!==norm(it.q)&&!it.variants.some(x=>norm(x)===norm(v)))it.variants.push(v);
+    return it;
+  }
+  const it={id:Date.now()+Math.random(),q:p.q,opts:p.opts,ans:p.ans,seen:0,ok:0,bad:0,last:Date.now(),variants:[...(p.variants||[])]};
+  bank.push(it);return it;
+}
+const persist=()=>Store.set(bank);
+
+// ---- Práctica ----
+function show(){
+  S=parse($('#in').value).map(p=>({q:p.q,opts:p.opts,sel:null,st:'p',m:best(p.q)}));
+  if(!S.length)toast('No encontré preguntas. Pega el texto en el cuadro.');
+  render();
+}
+function validate(i){
+  const x=S[i];if(x.sel==null||x.st!=='p')return;
+  const m=x.m;
+  if(m&&m.sim>=75&&m.item.ans){
+    const it=m.item,ok=norm(x.opts[x.sel])===norm(it.ans);
+    it.seen++;ok?it.ok++:it.bad++;it.last=Date.now();
+    if(norm(x.q)!==norm(it.q)&&!it.variants.some(v=>norm(v)===norm(x.q)))it.variants.push(x.q);
+    x.st=ok?'ok':'bad';persist();
+  }else x.st='ask';
+}
+function saveConfirmed(){
+  let n=0;
+  S.forEach(x=>{if(x.st==='conf'){
+    const it=addToBank({q:x.q,opts:x.opts,ans:x.opts[x.sel]});
+    if(!it.ans)it.ans=x.opts[x.sel];
+    it.seen++;it.ok++;it.last=Date.now();x.st='saved';n++;
+  }});
+  persist();render();toast(n+' guardada(s) en el banco');
+}
+function chip(x){
+  const m=x.m;
+  if(x.st==='ok')return['ok','Correcta'];if(x.st==='bad')return['bad','Incorrecta'];
+  if(x.st==='conf')return['','Confirmada'];if(x.st==='saved')return['','Guardada'];
+  if(m&&m.sim>=75&&m.item.ans)return['w','En banco '+m.sim+'%'];
+  if(m)return['w','Parecida '+m.sim+'%'];
+  return['','Nueva'];
+}
+function render(){
+  const n=S.length,ok=S.filter(x=>['ok','conf','saved'].includes(x.st)).length,bad=S.filter(x=>x.st==='bad').length,pe=n-ok-bad;
+  $('#sum').innerHTML=n?`<div class="sum"><div class="prog" aria-hidden="true"><i style="width:${ok/n*100}%;background:var(--ok)"></i><i style="width:${bad/n*100}%;background:var(--bad)"></i></div>
+  <div class="st"><span><b>${n}</b>Encontradas</span><span><b>${ok}</b>Confirmadas</span><span><b>${pe}</b>Pendientes</span><span><b>${bad}</b>Incorrectas</span></div>
+  <label class="tg"><input type="checkbox" id="sa" ${showAns?'checked':''}> Mostrar respuesta del banco</label></div>`:'';
+  $('#list').innerHTML=n?S.map((x,i)=>{
+    const done=x.st!=='p',[cc,ct]=chip(x),known=x.m&&x.m.sim>=75&&x.m.item.ans;
+    const key=known&&showAns?norm(x.m.item.ans):null;
+    let h=`<div class="card ${x.st}"><div class="ch"><span class="num">Pregunta ${i+1}</span><span class="chip ${cc}">${ct}</span></div><div class="q">${esc(x.q)}</div>`;
+    if(known&&showAns)h+=`<div class="hint ok">Respuesta en banco: <b>${esc(x.m.item.ans)}</b></div>`;
+    else if(x.m&&!known)h+=`<div class="hint w">Se parece a: «${esc(x.m.item.q)}». Revísala.</div>`;
+    h+=x.opts.map((o,j)=>`<label class="o ${x.sel===j?'sel':''} ${key&&norm(o)===key&&!x.sel&&x.sel!==0?'':''}"><input type="radio" name="q${i}" data-i="${i}" data-j="${j}" ${x.sel===j?'checked':''} ${done||x.st==='ask'?'disabled':''}><span class="lt">${String.fromCharCode(65+j)}</span><span>${esc(o)}</span></label>`).join('');
+    if(x.st==='p')h+=`<div class="row"><button class="btn p sm" data-a="val" data-i="${i}" ${x.sel==null?'disabled':''}>Validar</button></div>`;
+    if(x.st==='ask')h+=`<div class="hint"><b>¿Confirmas que esta respuesta es correcta?</b></div><div class="row"><button class="btn p sm" data-a="yes" data-i="${i}">Sí, es correcta</button><button class="btn sm" data-a="no" data-i="${i}">No</button></div>`;
+    if(x.st==='ok')h+=`<div class="hint ok">✓ Coincide con la respuesta confirmada</div>`;
+    if(x.st==='bad')h+=`<div class="hint bad">✗ No coincide. La respuesta confirmada sigue siendo: <b>${esc(x.m.item.ans)}</b></div>`;
+    if(x.st==='conf')h+=`<div class="hint ok">✓ Confirmada. Falta guardarla en el banco.</div>`;
+    if(x.st==='saved')h+=`<div class="hint ok">✓ Guardada en el banco</div>`;
+    return h+'</div>';
+  }).join(''):'<div class="empty">Pega tus preguntas arriba y pulsa «Mostrar preguntas».</div>';
+  const np=S.filter(x=>x.st==='p'&&x.sel!=null).length,na=S.filter(x=>x.st==='ask').length,nc=S.filter(x=>x.st==='conf').length;
+  const b=[];
+  if(np)b.push(`<button class="btn" data-a="valall">Validar ${np}</button>`);
+  if(na)b.push(`<button class="btn" data-a="yesall">Confirmar ${na} nuevas</button>`);
+  if(nc)b.push(`<button class="btn p" data-a="save">Guardar ${nc} confirmada${nc>1?'s':''}</button>`);
+  $('#barIn').innerHTML=b.join('');$('#bar').hidden=!b.length||$('#pr').hidden;
+  renderBank();
+}
+function renderBank(){
+  $('#bn').textContent=bank.length;
+  const f=norm($('#qs').value),L=bank.map((b,k)=>[b,k]).filter(([b])=>!f||norm([b.q,b.ans,...b.variants].join(' ')).includes(f));
+  $('#bank').innerHTML=L.length?L.map(([b,k])=>`<details class="bk"><summary><span>${esc(b.q)}</span><span class="chip ok">${esc(b.ans||'—')}</span></summary><div class="bd">
+  <ul>${b.opts.map(o=>`<li class="${norm(o)===norm(b.ans||'')?'a':''}">${esc(o)}</li>`).join('')}</ul>
+  <div class="hint">Vista ${b.seen}× · Aciertos ${b.ok} · Errores ${b.bad}${b.last?' · Último uso '+new Date(b.last).toLocaleDateString():''}</div>
+  ${b.variants.length?`<div class="hint">Variantes:</div><ul>${b.variants.map(v=>`<li>${esc(v)}</li>`).join('')}</ul>`:''}
+  <div class="row"><select id="fx${k}" style="flex:1;min-width:0" aria-label="Nueva respuesta">${b.opts.map((o,j)=>`<option value="${j}">${esc(o)}</option>`).join('')}</select>
+  <button class="btn sm" data-a="fix" data-k="${k}">Corregir respuesta</button>
+  <button class="btn sm g" data-a="del" data-k="${k}">${b._d?'¿Seguro? Eliminar':'Eliminar'}</button></div></div></details>`).join(''):`<div class="empty">${bank.length?'Sin resultados.':'El banco está vacío. Valida preguntas y guarda las confirmadas, o importa un banco.'}</div>`;
+}
+
+// ---- Exportar / importar ----
+function exportText(){
+  return bank.map((b,n)=>`${n+1}. ${b.q}\n${b.opts.join('\n')}\nRESPUESTA: ${b.ans||''}`+b.variants.map(v=>`\nVARIANTE: ${v}`).join('')).join('\n\n');
+}
+async function copyBank(){
+  const t=exportText();$('#io').value=t;
+  if(!t)return toast('El banco está vacío');
+  try{await navigator.clipboard.writeText(t);toast('Banco copiado al portapapeles')}
+  catch(e){$('#io').select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}
+    toast(ok?'Banco copiado al portapapeles':'Copia el texto del cuadro manualmente')}
+}
+async function saveJson(){
+  if(!bank.length)return toast('El banco está vacío');
+  const data=JSON.stringify(bank.map(({_d,...b})=>b),null,1);
+  try{const d=window.claude&&await claude.use('downloads');
+    if(!d){$('#io').value=data;return toast('Descarga no disponible: copia el JSON del cuadro')}
+    await d.save({filename:'banco-preguntas.json',data});
+  }catch(e){toast('No se guardó el archivo')}
+}
+function importBank(){
+  const raw=$('#io').value.trim();let items;
+  try{items=raw[0]==='['?JSON.parse(raw).filter(p=>p&&p.q&&Array.isArray(p.opts)).map(p=>({...p,variants:p.variants||[]})):parse(raw).filter(p=>p.opts.length)}
+  catch(e){return toast('El JSON no es válido')}
+  let n=0;
+  items.forEach(p=>{const before=bank.length,it=addToBank(p);if(bank.length>before){n++;if(p.seen!=null){it.seen=p.seen||0;it.ok=p.ok||0;it.bad=p.bad||0}}else if(p.ans&&!it.ans)it.ans=p.ans});
+  persist();render();toast(`Importadas ${n} nuevas de ${items.length}. Las repetidas se fusionaron sin cambiar respuestas.`);
+}
+
+// ---- Fotos (lectura con Claude, capacidad "sample") ----
+let sampler=null,maxImgs=1,why='Cargando... intenta de nuevo en unos segundos.';
+(async()=>{
+  try{
+    if(!window.claude){why='Esta función solo está disponible al abrir la página desde claude.ai.';return}
+    sampler=await claude.use('sample');
+    if(!sampler){why='Tu visor no permite leer fotos en esta página.';return}
+    const l=await sampler.limits().catch(()=>null);
+    if(l&&l.images){maxImgs=l.images.maxCount||1;$('#ph').accept=(l.images.mediaTypes||[]).join(',');why=''}
+    else why='Tu visor no permite enviar imágenes.';
+  }catch(e){why='No se pudo activar la lectura de fotos.'}
+})();
+const PROMPT=`Transcribe el texto de estas imágenes de un cuestionario. Copia el texto exactamente como aparece (mayúsculas, ortografía, nombres, símbolos); no corrijas, no traduzcas ni resumas. Escribe cada pregunta en una línea (con su número si lo tiene), luego sus opciones una por línea, y deja una línea en blanco entre preguntas. Ignora botones y elementos de interfaz. Si hay varias imágenes, sigue su orden. Responde solo con el texto transcrito.`;
+async function readPhotos(files){
+  if(!files.length||!sampler)return;
+  toast('Leyendo texto de la foto...');
+  try{
+    const {text}=await sampler(PROMPT,{images:[...files].slice(0,maxImgs),modelTier:'quick'});
+    const ta=$('#in');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+text.trim();
+    show();toast('Texto extraído. Revísalo antes de validar.');
+  }catch(e){
+    const c=e&&e.code;
+    toast(c==='not_granted'?'Permiso denegado para leer la foto':c==='rate_limited'?'Demasiadas solicitudes. Espera un momento':c==='image_rejected'?'No se pudo leer esa imagen. Prueba con otra':'No se pudo extraer el texto');
+  }
+  $('#ph').value='';
+}
+
+const DEMO=`1. ¿Usted tiene algún tipo de vínculo comercial con MOVISTAR?
+SI
+NO
+
+2. En los últimos seis meses, ¿con cuál de las siguientes entidades usted tenía una tarjeta de crédito y un crédito de vivienda?
+FINAMERICA - FINANCIERA AMERICA S.A.
+FINANCIERA COMPARTIR S.A.
+INVERSORA PICHINCHA S.A.
+Ninguna de las anteriores
+
+3. ¿Usted tiene un crédito en la modalidad COMERCIAL con DE OCCIDENTE?
+SI
+NO
+
+4. ¿Con qué entidad canceló o saldó un crédito de consumo (PIGNORACIÓN) en los últimos seis meses?
+COMERCIA S.A.
+COLTEFINANCIERA
+GIROS & FINANZAS
+Ninguna de las anteriores
+
+5. ¿Con cuál de las siguientes entidades del sector real adquirió un vínculo en los últimos seis meses?
+COACOSTA LTDA
+EQUILIBRIUM
+PRONASA
+NINGUNA DE LAS ANTERIORES`;
+const DEMO_ANS=['SI','Ninguna de las anteriores','NO','Ninguna de las anteriores','NINGUNA DE LAS ANTERIORES'];
+
+// ---- Eventos ----
+function tab(t){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
+  $('#pr').hidden=t!=='pr';$('#bk').hidden=t!=='bk';render();window.scrollTo(0,0);
+}
+document.addEventListener('change',e=>{
+  if(e.target.id==='sa'){showAns=e.target.checked;return render()}
+  if(e.target.id==='ph')return readPhotos(e.target.files);
+  const r=e.target.closest('input[type=radio][data-i]');if(!r)return;
+  S[+r.dataset.i].sel=+r.dataset.j;render();
+});
+$('#qs').addEventListener('input',renderBank);
+document.addEventListener('click',e=>{
+  const t=e.target.closest('.tabs button');if(t)return tab(t.dataset.t);
+  const b=e.target.closest('button[data-a]');if(!b)return;
+  const a=b.dataset.a,i=+b.dataset.i,k=+b.dataset.k;
+  if(a==='show')show();
+  else if(a==='photo'){if(why)toast(why);else $('#ph').click()}
+  else if(a==='clear'){$('#in').value='';S=[];render()}
+  else if(a==='demo'){
+    $('#in').value=DEMO;
+    if(!bank.length){parse(DEMO).forEach((p,n)=>addToBank({...p,ans:DEMO_ANS[n]}));persist()}
+    show();
+  }
+  else if(a==='val'){validate(i);render()}
+  else if(a==='valall'){S.forEach((x,j)=>validate(j));render()}
+  else if(a==='yes'){S[i].st='conf';render()}
+  else if(a==='yesall'){S.forEach(x=>{if(x.st==='ask')x.st='conf'});render()}
+  else if(a==='no'){S[i].st='p';S[i].sel=null;render()}
+  else if(a==='save')saveConfirmed();
+  else if(a==='copy')copyBank();
+  else if(a==='json')saveJson();
+  else if(a==='import')importBank();
+  else if(a==='fix'){const it=bank[k];it.ans=it.opts[+$('#fx'+k).value];persist();renderBank();toast('Respuesta corregida')}
+  else if(a==='del'){
+    if(bank[k]._d){bank.splice(k,1);persist()}else{bank.forEach(x=>delete x._d);bank[k]._d=true}
+    renderBank();
+    const d=document.querySelectorAll('#bank details')[[...bank.keys()].indexOf(k)];
+  }
+});
+render();
+</script>
+</body>
+</html>
