@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banco de Entrenamiento — Preguntas</title>
+<style>
+:root{--bg:#090b12;--card:#111522;--card2:#171c2b;--text:#eef2ff;--muted:#9aa4bd;--accent:#7c5cff;--ok:#23c483;--bad:#ff5c77;--border:#252c40}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#1c1740 0,#090b12 42%);font-family:Inter,system-ui,Arial;color:var(--text)}
+header{padding:28px 20px 16px;max-width:1100px;margin:auto}h1{margin:0;font-size:28px}p{color:var(--muted)}
+main{max-width:1100px;margin:auto;padding:0 20px 40px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:rgba(17,21,34,.92);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 12px 40px #0005}.wide{grid-column:1/-1}
+textarea,input,select{width:100%;background:#0c101b;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px;font-size:15px;outline:none}textarea{min-height:120px;resize:vertical}button{border:0;border-radius:11px;padding:11px 15px;font-weight:700;cursor:pointer;background:var(--accent);color:white;margin:6px 4px 0 0}button.secondary{background:#242b40}button.ok{background:#13865e}button.bad{background:#a82e49}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.drop{border:2px dashed #3a4260;border-radius:15px;padding:22px;text-align:center;color:var(--muted);cursor:pointer}.drop img{max-width:100%;max-height:260px;border-radius:12px;margin-top:12px}.result{margin-top:14px;padding:15px;border-radius:14px;background:var(--card2);border:1px solid var(--border)}.answer{font-size:23px;font-weight:800;color:#a99cff}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#0c101b;border:1px solid var(--border);padding:14px;border-radius:12px}.stat b{font-size:22px}.item{padding:13px;border:1px solid var(--border);border-radius:13px;margin-top:9px;background:#0c101b}.tag{display:inline-block;padding:4px 8px;border-radius:20px;background:#242b40;color:#cbd2e8;font-size:12px}.small{font-size:12px;color:var(--muted)}.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>🧠 Banco de Entrenamiento</h1>
+<p>Guarda preguntas y respuestas para practicar, comparar variantes y corregir el banco con tus resultados.</p>
+</header>
+<main>
+<div class="grid">
+<section class="card">
+<h2>1. Agregar pregunta</h2>
+<label class="small">Pregunta</label>
+<textarea id="q" placeholder="Escribe o pega la pregunta..."></textarea>
+<label class="small">Respuesta registrada</label>
+<input id="a" placeholder="Ej. SI / NO / Ninguna de las anteriores">
+<label class="small">Opciones (una por línea, opcional)</label>
+<textarea id="opts" placeholder="SI&#10;NO&#10;NINGUNA DE LAS ANTERIORES"></textarea>
+<div class="row"><button onclick="saveQuestion()">💾 Guardar</button><button class="secondary" onclick="clearForm()">Limpiar</button></div>
+</section>
+
+<section class="card">
+<h2>2. Imagen de referencia</h2>
+<div class="drop" id="drop">📷 Toca para seleccionar una imagen
+<input id="img" type="file" accept="image/*" class="hidden">
+<div id="preview"></div></div>
+<p class="small">La imagen se usa como referencia visual. Para incorporar el texto automáticamente con OCR, puedes activar una integración de OCR en una versión posterior.</p>
+</section>
+
+<section class="card wide">
+<h2>3. Buscar / practicar</h2>
+<textarea id="search" placeholder="Pega aquí una pregunta para buscar coincidencias..."></textarea>
+<div class="row"><button onclick="findAnswer()">🔎 Buscar en el banco</button><button class="secondary" onclick="practiceRandom()">🎲 Pregunta aleatoria</button></div>
+<div id="result"></div>
+</section>
+
+<section class="card wide">
+<h2>4. Historial y correcciones</h2>
+<div class="stats">
+<div class="stat"><span class="small">Preguntas</span><br><b id="count">0</b></div>
+<div class="stat"><span class="small">Acertadas</span><br><b id="hits">0</b></div>
+<div class="stat"><span class="small">Corregidas</span><br><b id="fixes">0</b></div>
+</div>
+<div id="list"></div>
+</section>
+</div>
+</main>
+
+<script>
+const KEY="banco_entrenamiento_v1";
+let db=JSON.parse(localStorage.getItem(KEY)||"[]");
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9ñ\\s]/gi," ").replace(/\\s+/g," ").trim();
+function save(){localStorage.setItem(KEY,JSON.stringify(db));render();}
+function saveQuestion(){
+ const q=document.getElementById("q").value.trim(),a=document.getElementById("a").value.trim();
+ if(!q||!a){alert("Escribe la pregunta y la respuesta registrada.");return}
+ const options=document.getElementById("opts").value.split("\\n").map(x=>x.trim()).filter(Boolean);
+ const nq=norm(q), existing=db.find(x=>norm(x.q)===nq);
+ if(existing){existing.a=a;existing.options=options;existing.updated=new Date().toISOString();existing.fixes=(existing.fixes||0)+1}
+ else db.unshift({id:crypto.randomUUID(),q,a,options,hits:0,fixes:0,uses:0,created:new Date().toISOString(),updated:new Date().toISOString()});
+ save();clearForm();alert("Pregunta guardada en este dispositivo.");
+}
+function clearForm(){["q","a","opts"].forEach(id=>document.getElementById(id).value="");}
+function similarity(a,b){
+ a=norm(a);b=norm(b);if(!a||!b)return 0;if(a===b)return 1;
+ const A=new Set(a.split(" ")),B=new Set(b.split(" "));let inter=0;A.forEach(x=>{if(B.has(x))inter++});
+ return inter/Math.max(A.size,B.size);
+}
+function findAnswer(){
+ const q=document.getElementById("search").value.trim(), box=document.getElementById("result");
+ if(!q){box.innerHTML='<div class="result">Pega una pregunta primero.</div>';return}
+ let ranked=db.map(x=>({x,s:similarity(q,x.q)})).sort((a,b)=>b.s-a.s);
+ if(!ranked.length||ranked[0].s<.35){box.innerHTML='<div class="result">No hay una coincidencia suficientemente cercana en el banco.</div>';return}
+ const r=ranked[0];r.x.uses=(r.x.uses||0)+1;save();
+ box.innerHTML=`<div class="result"><span class="tag">Coincidencia ${(r.s*100).toFixed(0)}%</span><h3>Pregunta guardada</h3><div>${escapeHtml(r.x.q)}</div><p>Respuesta registrada:</p><div class="answer">${escapeHtml(r.x.a)}</div><div class="row"><button class="ok" onclick="mark(${JSON.stringify(r.x.id)},true)">✓ La respuesta fue correcta</button><button class="bad" onclick="mark(${JSON.stringify(r.x.id)},false)">✗ Corregir respuesta</button></div></div>`;
+}
+function mark(id,correct){
+ const x=db.find(y=>y.id===id);if(!x)return;
+ if(correct)x.hits=(x.hits||0)+1;
+ else {x.fixes=(x.fixes||0)+1; const newA=prompt("Escribe la respuesta correcta para actualizar el banco:",x.a);if(newA&&newA.trim())x.a=newA.trim();}
+ x.updated=new Date().toISOString();save();findAnswer();
+}
+function practiceRandom(){
+ if(!db.length)return alert("Todavía no hay preguntas guardadas.");
+ const x=db[Math.floor(Math.random()*db.length)];document.getElementById("search").value=x.q;findAnswer();
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+function render(){
+ document.getElementById("count").textContent=db.length;
+ document.getElementById("hits").textContent=db.reduce((n,x)=>n+(x.hits||0),0);
+ document.getElementById("fixes").textContent=db.reduce((n,x)=>n+(x.fixes||0),0);
+ document.getElementById("list").innerHTML=db.map(x=>`<div class="item"><b>${escapeHtml(x.q)}</b><br><span class="small">Respuesta:</span> <strong>${escapeHtml(x.a)}</strong><br><span class="small">Usos: ${x.uses||0} · Acertadas: ${x.hits||0} · Correcciones: ${x.fixes||0}</span></div>`).join("");
+}
+document.getElementById("drop").onclick=()=>document.getElementById("img").click();
+document.getElementById("img").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>document.getElementById("preview").innerHTML=`<img src="${r.result}" alt="Referencia">`;r.readAsDataURL(f);}
+render();
+</script>
+</body>
+</html>
